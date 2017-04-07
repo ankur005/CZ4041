@@ -109,14 +109,21 @@ def getQuoteAge(df):
     return series.astype('timedelta64[D]')
 
 
-def getPhysicalVolume(diameter, length):
-    return math.pi * (diameter**2) * length / 4
+def getPhysicalMaterialVolume(df):
+    # Can explore effects of inner radius or inner volume
+    df['physical_volume'] = 0.0
+    df['material_volume'] = 0.0
+    for i in range(0, len(df)):
+        radius = df.get_value(i, 'diameter') / 2
+        length = df.get_value(i, 'length')
+        thickness = df.get_value(i, 'wall')
+        phyVolume = (math.pi * (radius**2) * length)
+        innerVolume = (math.pi * ((radius-thickness)**2) * length)
+        df.set_value(i, 'physical_volume', phyVolume)
+        df.set_value(i, 'material_volume', innerVolume)
 
-
-def getMaterialVolume(diameter, length, thickness):
-    outerVolume = getPhysicalVolume(diameter, length)
-    innerVolume = getPhysicalVolume(diameter - 2*thickness, length)
-    return outerVolume - innerVolume
+    dfToCSV(df[['tube_assembly_id','physical_volume','material_volume']],'volume_tubes')
+    return df
 
 
 def componentToFeatures(df):
@@ -148,32 +155,18 @@ def getAugmentedDataset(tubeDf, mergedComponents):
     tubeDf = oneHotEncoder(tubeDf, 'end_a', True, 'end_a')
     # One hot encode end_x column
     tubeDf = oneHotEncoder(tubeDf, 'end_x', True, 'end_x')
-    # One hot encode specs
-    specList = []
-    specSeriesList = []
-    for i in range(1,11):
-        specList.append('spec' + str(i))
-        specSeriesList.append(tubeDf['spec' + str(i)])
-
-    pd.get_dummies()
-    # tempDf = pd.concat(specSeriesList, axis=1)
-    tubeDf = oneHotEncoder(tubeDf, specSeriesList, True, 'spec')
-
-    # tubeDf = oneHotEncoder(tubeDf, specList, True, 'spec')
-
     # Quote age feature
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
-    # components to features
-    tubeDf = componentToFeatures(tubeDf)
-    dfToCSV(tubeDf, 'merged_tube_features')
+    # Physical and material volume feature
+    tubeDf = getPhysicalMaterialVolume(tubeDf)
+    # components to features, uncomment later
+    # tubeDf = componentToFeatures(tubeDf)
+    dfToCSV(tubeDf, 'train_set_merged')
 
 
 
 raw = loadRawData()
-# componentTypes, componentGroupsData = loadComponentData()
-# componentFeatures = getComponentFeatures(componentGroupsData)
-# mergedComponents = mergeComponents()
-# tubeDf = mergeTubeFeatures(raw)
-# mergedComponents = mergeComponents()
-# getAugmentedDataset(tubeDf, mergedComponents)
+tubeDf = mergeTubeFeatures(raw)
+mergedComponents = mergeComponents()
+getAugmentedDataset(tubeDf, mergedComponents)
 
