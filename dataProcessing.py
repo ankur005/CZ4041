@@ -413,6 +413,8 @@ def get_augmented_dataset(
     # - end_a and end_x from tube_csv have missing value 'NONE' and '9999',
     #   which pandas by default treats as two different string values)
 
+    file = open('aug_set.csv','w')
+    aug_set.to_csv(file)
     return aug_set
 
 
