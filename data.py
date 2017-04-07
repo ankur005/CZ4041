@@ -99,11 +99,38 @@ def dfToCSV(df, fileName):
 
 
 def oneHotEncoder(df, column, dummy, prefix):
+    # print pd.get_dummies(df[column])
     return pd.concat([df, pd.get_dummies(df[column], dummy_na=dummy, prefix=prefix)], axis=1)
 
 def getQuoteAge(df):
     series = pd.to_datetime(df['quote_date']) - datetime(1900, 1, 1)
     return series.astype('timedelta64[D]')
+
+def componentToFeatures(df):
+    featureDf = pd.DataFrame()
+    compIdCols = []
+    quantityCols = []
+    for i in range(1,9):
+        compIdCols.append('component_id' + str(i))
+        quantityCols.append('quantity_' + str(i))
+
+    for i in range(0,len(df)):
+        print i
+        for j in range(1,9):
+            componentId = df.get_value(i, 'component_id_' + str(j))
+            quantity = df.get_value(i, 'quantity_' + str(j))
+            if pd.isnull(quantity):
+                quantity = 0
+            if not(pd.isnull(componentId)):
+                print "Here: ", componentId, quantity
+                colName = 'component_id_' + str(componentId)
+                if colName not in featureDf.columns:
+                    featureDf[colName] = 0
+                featureDf.set_value(i, colName, quantity)
+
+    print featureDf
+    dfToCSV(pd.concat([df, featureDf], axis=1), 'compCount2')
+
 
 def getAugmentedDataset(tubeDf, mergedComponents):
     # One hot encode supplier labels
@@ -114,6 +141,19 @@ def getAugmentedDataset(tubeDf, mergedComponents):
     tubeDf = oneHotEncoder(tubeDf, 'end_a', True, 'end_a')
     # One hot encode end_x column
     tubeDf = oneHotEncoder(tubeDf, 'end_x', True, 'end_x')
+    # One hot encode specs
+    specList = []
+    specSeriesList = []
+    for i in range(1,11):
+        specList.append('spec' + str(i))
+        specSeriesList.append(tubeDf['spec' + str(i)])
+
+    pd.get_dummies()
+    # tempDf = pd.concat(specSeriesList, axis=1)
+    tubeDf = oneHotEncoder(tubeDf, specSeriesList, True, 'spec')
+
+    # tubeDf = oneHotEncoder(tubeDf, specList, True, 'spec')
+
     # Quote age feature
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
     dfToCSV(tubeDf, 'merged_tube_features')
@@ -121,5 +161,6 @@ def getAugmentedDataset(tubeDf, mergedComponents):
 
 raw = loadRawData()
 tubeDf = mergeTubeFeatures(raw)
-mergedComponents = mergeComponents()
-getAugmentedDataset(tubeDf, mergedComponents)
+componentToFeatures(tubeDf)
+# mergedComponents = mergeComponents()
+# getAugmentedDataset(tubeDf, mergedComponents)
