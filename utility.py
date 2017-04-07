@@ -1,0 +1,2 @@
+outDir = './OutData'
+dataDir = './Data'
