@@ -109,11 +109,6 @@ def getQuoteAge(df):
     return series.astype('timedelta64[D]')
 
 
-def getQuoteAge(dataset):
-    series = pd.to_datetime(dataset['quote_date']) - datetime(1900, 1, 1)
-    return series.astype('timedelta64[D]')
-
-
 def getPhysicalVolume(diameter, length):
     return math.pi * (diameter**2) * length / 4
 
@@ -140,7 +135,8 @@ def componentToFeatures(df):
                     featureDf[colName] = 0
                 featureDf.set_value(i, colName, quantity)
 
-    dfToCSV(pd.concat([df, featureDf], axis=1), 'compCount2')
+    return pd.concat([df, featureDf], axis=1)
+    dfToCSV(pd.concat([df, featureDf], axis=1), 'train_set_after_merged_components')
 
 
 def getAugmentedDataset(tubeDf, mergedComponents):
@@ -167,6 +163,8 @@ def getAugmentedDataset(tubeDf, mergedComponents):
 
     # Quote age feature
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
+    # components to features
+    tubeDf = componentToFeatures(tubeDf)
     dfToCSV(tubeDf, 'merged_tube_features')
 
 
