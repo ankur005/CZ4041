@@ -98,9 +98,12 @@ def dfToCSV(df, fileName):
         df.to_csv(file)
 
 
-def oneHotEncoder(dataframe, column, dummy, prefix):
-    return pd.concat([dataframe, pd.get_dummies(dataframe[column], dummy_na=dummy, prefix=prefix)], axis=1)
+def oneHotEncoder(df, column, dummy, prefix):
+    return pd.concat([df, pd.get_dummies(df[column], dummy_na=dummy, prefix=prefix)], axis=1)
 
+def getQuoteAge(df):
+    series = pd.to_datetime(df['quote_date']) - datetime(1900, 1, 1)
+    return series.astype('timedelta64[D]')
 
 def getAugmentedDataset(tubeDf, mergedComponents):
     # One hot encode supplier labels
@@ -111,6 +114,8 @@ def getAugmentedDataset(tubeDf, mergedComponents):
     tubeDf = oneHotEncoder(tubeDf, 'end_a', True, 'end_a')
     # One hot encode end_x column
     tubeDf = oneHotEncoder(tubeDf, 'end_x', True, 'end_x')
+    # Quote age feature
+    tubeDf['quote_age'] = getQuoteAge(tubeDf)
     dfToCSV(tubeDf, 'merged_tube_features')
 
 
@@ -118,19 +123,3 @@ raw = loadRawData()
 tubeDf = mergeTubeFeatures(raw)
 mergedComponents = mergeComponents()
 getAugmentedDataset(tubeDf, mergedComponents)
-def getQuoteAge(dataset):
-    series = pd.to_datetime(dataset['quote_date']) - datetime(1900, 1, 1)
-    return series.astype('timedelta64[D]')
-
-raw = loadRawData()
-# componentTypes, componentGroupsData = loadComponentData()
-# componentFeatures = getComponentFeatures(componentGroupsData)
-# mergedComponents = mergeComponents()
-trainData = raw['train_set']
-quoteAge = getQuoteAge(trainData)
-df = pd.DataFrame()
-df['quote_date'] = trainData['quote_date']
-df['quote_age'] = quoteAge
-
-with open(os.path.join(outDir, 'quote.csv'), 'wb') as file:
-    df.to_csv(file)
