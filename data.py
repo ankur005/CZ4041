@@ -115,3 +115,19 @@ raw = loadRawData()
 tubeDf = mergeTubeFeatures(raw)
 mergedComponents = mergeComponents()
 getAugmentedDataset(tubeDf, mergedComponents)
+def getQuoteAge(dataset):
+    series = pd.to_datetime(dataset['quote_date']) - datetime(1900, 1, 1)
+    return series.astype('timedelta64[D]')
+
+raw = loadRawData()
+# componentTypes, componentGroupsData = loadComponentData()
+# componentFeatures = getComponentFeatures(componentGroupsData)
+# mergedComponents = mergeComponents()
+trainData = raw['train_set']
+quoteAge = getQuoteAge(trainData)
+df = pd.DataFrame()
+df['quote_date'] = trainData['quote_date']
+df['quote_age'] = quoteAge
+
+with open(os.path.join(outDir, 'quote.csv'), 'wb') as file:
+    df.to_csv(file)
