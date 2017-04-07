@@ -63,8 +63,8 @@ def mergeTubeFeatures(raw):
     trainDataDf = pd.merge(trainDataDf, raw['tube_end_form'], left_on="end_x", right_on="end_form_id", how='left')
     trainDataDf = trainDataDf.rename(columns={'forming': 'end_x_forming'})
     trainDataDf = trainDataDf.drop("end_form_id", axis=1)
-
     dfToCSV(trainDataDf, 'merged_tube_features')
+    return trainDataDf
 
 
 def getComponentFeatures(componentGroupsData):
@@ -98,16 +98,19 @@ def dfToCSV(df, fileName):
         df.to_csv(file)
 
 
-def oneHotEncoder(dataframe, column):
-    dataframe = pd.concat([dataframe, pd.get_dummies(dataframe[column])], axis=1)
-    return dataframe
+def oneHotEncoder(dataframe, column, dummy, prefix):
+    return pd.concat([dataframe, pd.get_dummies(dataframe[column], dummy_na=dummy, prefix=prefix)], axis=1)
 
 
 def getAugmentedDataset(tubeDf, mergedComponents):
     # One hot encode supplier labels
-    tubeDf = oneHotEncoder(tubeDf, 'supplier')
+    tubeDf = oneHotEncoder(tubeDf, 'supplier', True, 'supplier')
     # One hot encode material ID labels
-    tubeDf = oneHotEncoder(tubeDf, 'material_id')
+    tubeDf = oneHotEncoder(tubeDf, 'material_id', True, 'material')
+    # One hot encode end_a column
+    tubeDf = oneHotEncoder(tubeDf, 'end_a', True, 'end_a')
+    # One hot encode end_x column
+    tubeDf = oneHotEncoder(tubeDf, 'end_x', True, 'end_x')
     dfToCSV(tubeDf, 'merged_tube_features')
 
 
