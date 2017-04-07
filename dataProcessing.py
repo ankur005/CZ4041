@@ -391,7 +391,14 @@ def get_augmented_dataset(
             component_info_df.component_id.values,
             component_info_df[col].values))
         feat_vals = []
+
+        count = 0
+
+        print str(aug_set.columns)
         for cid_list in aug_set.components:
+            count = count + 1
+            print str(count) + ": " + str(cid_list)
+
             vals = [cid_to_val[cid] for cid in cid_list]
             feat_vals.append(aggregator(init, init, *vals))
         aug_set[feat] = feat_vals
@@ -616,6 +623,10 @@ def featurize_and_to_numpy(featurizer, X_train, y_train, X_test, y_test):
 
     return X_train_np, y_train_np, X_test_np, y_test_np
 
+
 train, test = get_augmented_train_and_test_set()
 print train
 print type(train)
+
+with open('./OutData/aug_test_set.csv','wb') as f_obj:
+    train.to_csv(f_obj)
