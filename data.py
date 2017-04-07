@@ -158,9 +158,31 @@ def getAugmentedDataset(tubeDf, mergedComponents):
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
     dfToCSV(tubeDf, 'merged_tube_features')
 
+def getQuoteAge(dataset):
+    series = pd.to_datetime(dataset['quote_date']) - datetime(1900, 1, 1)
+    return series.astype('timedelta64[D]')
+
+def getPhysicalVolume(diameter, length):
+    return math.pi * (diameter**2) * length / 4
+
+def getMaterialVolume(diameter, length, thickness):
+    outerVolume = getPhysicalVolume(diameter, length)
+    innerVolume = getPhysicalVolume(diameter - 2*thickness, length)
+    return outerVolume - innerVolume
+
 
 raw = loadRawData()
-tubeDf = mergeTubeFeatures(raw)
-componentToFeatures(tubeDf)
+# componentTypes, componentGroupsData = loadComponentData()
+# componentFeatures = getComponentFeatures(componentGroupsData)
+# mergedComponents = mergeComponents()
+# tubeDf = mergeTubeFeatures(raw)
 # mergedComponents = mergeComponents()
 # getAugmentedDataset(tubeDf, mergedComponents)
+# trainData = raw['train_set']
+# quoteAge = getQuoteAge(trainData)
+# df = pd.DataFrame()
+# df['quote_date'] = trainData['quote_date']
+# df['quote_age'] = quoteAge
+#
+# with open(os.path.join(outDir, 'quote.csv'), 'wb') as file:
+#     df.to_csv(file)
