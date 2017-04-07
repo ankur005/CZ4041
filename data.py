@@ -3,6 +3,7 @@ from collections import Counter
 import pandas as pd
 import os
 import math
+import numpy as np
 from utility import outDir, dataDir
 
 def loadRawData():
@@ -108,6 +109,81 @@ def getQuoteAge(df):
     series = pd.to_datetime(df['quote_date']) - datetime(1900, 1, 1)
     return series.astype('timedelta64[D]')
 
+def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10):
+    counter = None
+    val_to_int = None
+    int_to_val = None
+
+    # Build a map from string feature values to unique integers.
+    # Assumes 'other' does not occur as a value.
+    val_to_int = {'XXX_other': 0}
+    int_to_val = ['XXX_other']
+    next_index = 1
+    counter = Counter()
+    for val in df[col_name]:
+        if multiple:
+            # val is a list of categorical values.
+            counter.update(val)
+        else:
+            # val is a single categorical value.
+            counter[val] += 1
+    for val, count in counter.iteritems():
+        if count >= min_seen_count:
+            val_to_int[val] = next_index
+            int_to_val.append(val)
+            next_index += 1
+
+    feats = np.zeros((len(df), len(val_to_int)))
+    for i, orig_val in enumerate(df[col_name]):
+        if multiple:
+            # orig_val is a list of categorical values.
+            list_of_vals = orig_val
+        else:
+            # orig_val is a single categorical value.
+            list_of_vals = [orig_val]
+        for val in list_of_vals:
+            if val in val_to_int:
+                feats[i, val_to_int[val]] += 1
+            else:
+                feats[i, val_to_int['XXX_other']] += 1
+    feat_names = ['{} {}'.format(col_name, val) for val in int_to_val]
+    return pd.DataFrame(feats, index=df.index, columns=feat_names)
+
+
+def getSpecsAsList(df):
+    specDf = pd.DataFrame()
+    specDf['tube_assembly_id'] = df['tube_assembly_id']
+    newDf = df.where(pd.notnull(df), None)
+    specsList = [filter(None, row[1:]) for row in newDf.values]
+    # for i in range(0, len(df)):
+    #     tempList = []
+    #     for j in range(1,11):
+    #         tempList.append(df.get_value(i, 'spec' + str(j)))
+    #     specsList.append([x for x in tempList if not(pd.isnull(x))])
+    #     newDf.set_value(i, 'spec', tempList)
+    # print specsList
+    specDf['spec'] = specsList
+    dfToCSV(specDf,'tube_specs_as_list')
+    return specDf
+
+def getComponentsAsList(df):
+    componentsDf = pd.DataFrame()
+    componentsDf['tube_assembly_id'] = df['tube_assembly_id']
+    #  Sets the value of the cells which have NA value to empty
+    newDf = df.where(pd.notnull(df), None)
+
+    components = []
+    # Original row consists of the column: component_id_[1:8] and quantity_[1:8]
+    for origRow in (filter(None, row[1:]) for row in newDf.values):
+        # In new row, quantity will be removed and component ID will be replicated for count greater than 1
+        newRow = []
+        for component_str, count in zip(origRow[0::2], origRow[1::2]):
+            assert int(count) == count
+            newRow.extend([component_str] * int(count))
+        components.append(newRow)
+    componentsDf['components'] = components
+    dfToCSV(componentsDf,'tube_components_as_list')
+    return componentsDf
 
 def getPhysicalMaterialVolume(df):
     # Can explore effects of inner radius or inner volume
@@ -146,7 +222,12 @@ def componentToFeatures(df):
     dfToCSV(pd.concat([df, featureDf], axis=1), 'train_set_after_merged_components')
 
 
-def getAugmentedDataset(tubeDf, mergedComponents):
+def getAugmentedDataset(raw, mergedComponents):
+    # Get specs feature with list of values for different specs
+    raw['specs'] = getSpecsAsList(raw['specs'])
+    # Get component from bill_of_material as list of values under one feature components
+    raw['bill_of_materials'] = getComponentsAsList(raw['bill_of_materials'])
+    tubeDf = mergeTubeFeatures(raw)
     # One hot encode supplier labels
     tubeDf = oneHotEncoder(tubeDf, 'supplier', True, 'supplier')
     # One hot encode material ID labels
@@ -163,19 +244,8 @@ def getAugmentedDataset(tubeDf, mergedComponents):
     # tubeDf = componentToFeatures(tubeDf)
     dfToCSV(tubeDf, 'train_set_merged')
 
-def getSpecsList(df):
-    specsList = []
-    for i in range(0, len(df)):
-        tempList = []
-        for j in range(1,11):
-            tempList.append(df.get_value(i, 'spec' + j))
-        specsList.append(tempList)
-
-    return specsList
-
 
 raw = loadRawData()
-tubeDf = mergeTubeFeatures(raw)
 mergedComponents = mergeComponents()
-getAugmentedDataset(tubeDf, mergedComponents)
-
+getAugmentedDataset(raw, mergedComponents)
+# getSpecsList(tubeDf)
