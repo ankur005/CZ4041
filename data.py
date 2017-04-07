@@ -26,16 +26,43 @@ def loadRawData():
     return rawDfs
 
 def loadComponentData():
-    componentTypes = pd.read_csv(os.path.join(dataDir,'type_components.csv'))
-    componentGroups = ['adaptor','boss','elbow','float','hfl','other','sleeve','straight','tee','threaded']
+    componentTypes = pd.read_csv(os.path.join(dataDir,'type_component.csv'))
+    componentGroups = ['adaptor','boss','elbow','float','hfl','nut','other','sleeve','straight','tee','threaded']
 
     #  Dictionary of dataframes for different component groups
     componentGroupsData = {}
     for component in componentGroups:
-        componentGroupsData[component] = pd.read_csv(os.path.join(dataDir, component + '.csv'))
+        componentGroupsData[component] = pd.read_csv(os.path.join(dataDir, 'comp_' + component + '.csv'))
 
-    return componentTypes, componentGroups
+    return componentTypes, componentGroupsData
 
+def getComponentFeatures(componentGroupsData):
+    componentFeatures = []
+    for component_df in componentGroupsData.itervalues():
+        for col in component_df.columns:
+            if(col not in componentFeatures):
+                componentFeatures.append(col)
 
-raw = loadRawData()
+    print "Component Features: ", componentFeatures
+    print "Number of component features: ", len(componentFeatures)
+    return componentFeatures
 
+def mergeComponents():
+    componentTypes, componentGroupsData = loadComponentData()
+    componentFeatures = getComponentFeatures(componentGroupsData)
+    comp_df_list = []
+
+    for (component, component_df) in componentGroupsData.iteritems():
+        component_df['component_group_id'] =  component
+        comp_df_list.append(component_df)
+
+    merged_comps_df = pd.concat(comp_df_list, axis=0, ignore_index=True)
+
+    with open(os.path.join(outDir,'merged_comps.csv'),'wb') as fobj:
+        merged_comps_df.to_csv(fobj)
+    return merged_comps_df
+
+# raw = loadRawData()
+# componentTypes, componentGroupsData = loadComponentData()
+# componentFeatures = getComponentFeatures(componentGroupsData)
+mergedComponents = mergeComponents()
