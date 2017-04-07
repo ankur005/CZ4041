@@ -108,12 +108,6 @@ def getQuoteAge(df):
 
 def componentToFeatures(df):
     featureDf = pd.DataFrame()
-    compIdCols = []
-    quantityCols = []
-    for i in range(1,9):
-        compIdCols.append('component_id' + str(i))
-        quantityCols.append('quantity_' + str(i))
-
     for i in range(0,len(df)):
         print i
         for j in range(1,9):
@@ -128,7 +122,6 @@ def componentToFeatures(df):
                     featureDf[colName] = 0
                 featureDf.set_value(i, colName, quantity)
 
-    print featureDf
     dfToCSV(pd.concat([df, featureDf], axis=1), 'compCount2')
 
 
