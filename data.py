@@ -163,6 +163,15 @@ def getAugmentedDataset(tubeDf, mergedComponents):
     # tubeDf = componentToFeatures(tubeDf)
     dfToCSV(tubeDf, 'train_set_merged')
 
+def getSpecsList(df):
+    specsList = []
+    for i in range(0, len(df)):
+        tempList = []
+        for j in range(1,11):
+            tempList.append(df.get_value(i, 'spec' + j))
+        specsList.append(tempList)
+
+    return specsList
 
 
 raw = loadRawData()
