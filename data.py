@@ -15,33 +15,6 @@ def loadRawData():
     rawDfs = {}
     for file in fileNames:
         rawDfs[file] = pd.read_csv(os.path.join(dataDir, file + '.csv'))
-
-    #
-    # # Process Specs Data
-    # specsDf = pd.DataFrame()
-    # specsDf['tube_assembly_id'] = rawDfs['specs']['tube_assembly_id']
-    # tmp_df = rawDfs['specs'].where(pd.notnull(rawDfs['specs']), None)
-    # specs = [filter(None, row[1:]) for row in tmp_df.values]
-    # specsDf['specs'] = specs
-    # file = open(os.path.join(outDir,'new_specs.csv'),'w')
-    # specsDf.to_csv(file)
-    # rawDfs['specs'] = specsDf
-    #
-    # # Process Components data
-    # componentsDf = pd.DataFrame()
-    # componentsDf['tube_assembly_id'] = rawDfs['bill_of_materials']['tube_assembly_id']
-    # tmp_df = rawDfs['bill_of_materials'].where(pd.notnull(rawDfs['bill_of_materials']), None)
-    # components = []
-    # for origRow in (filter(None, row[1:]) for row in tmp_df.values):
-    #     newRow = []
-    #     for component_str, count in zip(origRow[0::2], origRow[1::2]):
-    #         assert int(count) == count
-    #         newRow.extend([component_str] * int(count))
-    #     components.append(newRow)
-    # componentsDf['components'] = components
-    # rawDfs['components'] = componentsDf
-    # file = open(os.path.join(outDir, 'new_components.csv'), 'w')
-    # componentsDf.to_csv(file)
     return rawDfs
 
 
@@ -88,7 +61,7 @@ def getBracketPricePatterns(df):
     bracketing_pattern = [None] * len(df)
     for t_s_q, indices in grouped.groups.iteritems():
         if len(indices) > 1:
-            bracket = tuple(sorted(df.quantity[indices].values))
+            bracket = tuple(sorted(df.adjusted_quantity[indices].values))
         else:
             bracket = ()
         for index in indices:
@@ -161,6 +134,7 @@ def getQuoteAge(df):
     series = pd.to_datetime(df['quote_date']) - datetime(1900, 1, 1)
     return series.astype('timedelta64[D]')
 
+
 def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10):
     counter = None
     val_to_int = None
@@ -219,6 +193,7 @@ def getSpecsAsList(df):
     dfToCSV(specDf,'tube_specs_as_list')
     return specDf
 
+
 def getComponentsAsList(df):
     componentsDf = pd.DataFrame()
     componentsDf['tube_assembly_id'] = df['tube_assembly_id']
@@ -237,6 +212,7 @@ def getComponentsAsList(df):
     componentsDf['components'] = components
     dfToCSV(componentsDf,'tube_components_as_list')
     return componentsDf
+
 
 def getPhysicalMaterialVolume(df):
     # Can explore effects of inner radius or inner volume
@@ -369,8 +345,8 @@ def getAugmentedDataset(raw, mergedComponents):
 
     # Composite features
     tubeDf['quote_age'] = getQuoteAge(tubeDf)                           # Quote_age
-    tubeDf['adjusted_quantity'] = getAdjustedQuantiy(tubeDf)            # Adjuste quantity
-    tubeDf = getPhysicalMaterialVolume(tubeDf)                          # Physcial and material volume
+    tubeDf['adjusted_quantity'] = getAdjustedQuantiy(tubeDf)            # Adjusted quantity
+    tubeDf = getPhysicalMaterialVolume(tubeDf)                          # Physical and material volume
     tubeDf['bracket_price_pattern'] = pd.Series(getBracketPricePatterns(tubeDf))
 
     # Merge component features with dataset
@@ -382,6 +358,7 @@ def getAugmentedDataset(raw, mergedComponents):
     dfToCSV(tubeDf, 'train_set_merged')
 
 
-raw = loadRawData()
-mergedComponents = mergeComponents()
-getAugmentedDataset(raw, mergedComponents)
+def getFinalTrainAndTestSet():
+    raw = loadRawData()
+    mergedComponents = mergeComponents()
+    getAugmentedDataset(raw, mergedComponents)
