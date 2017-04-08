@@ -82,6 +82,40 @@ def getComponentFeatures(componentGroupsData):
     print "Number of component features: ", len(componentFeatures)
     return componentFeatures
 
+def getBracketPricePatterns(df):
+    grouped = df.groupby(
+        ['tube_assembly_id', 'supplier', 'quote_date'])
+    bracketing_pattern = [None] * len(df)
+    for t_s_q, indices in grouped.groups.iteritems():
+        if len(indices) > 1:
+            bracket = tuple(sorted(df.quantity[indices].values))
+        else:
+            bracket = ()
+        for index in indices:
+            bracketing_pattern[index] = bracket
+
+    print bracketing_pattern
+    return bracketing_pattern
+
+    # bracketedRecords = [filter(lambda i: df.get_value(i,'bracket_pricing') == "Yes", df) for i in range(0, len(df))]
+    # bracketedRecordsDf = pd.DataFrame.from_records(bracketedRecords)
+    # uniqueTaids = bracketedRecordsDf['tube_assembly_id'].unique()
+    #
+    # bracketPatterns = []
+    #
+    # for taid in uniqueTaids:
+    #     bracketPattern = []
+    #     taidDf = bracketedRecordsDf.query('tube_assembly_id == taid')
+    #     for i in range(0, len(taidDf)):
+    #         bracketPattern.append(taidDf.get_value(i,'quantity'))
+    #
+    #     bracketPattern = tuple(bracketPattern)
+    #
+    # if bracketPattern not in bracketPatterns:
+    #     bracketPatterns.append(bracketPattern)
+    #
+    # print "Bracket Patterns: ", bracketPatterns
+
 
 def mergeComponents():
     componentTypes, componentGroupsData = loadComponentData()
@@ -287,6 +321,10 @@ def getAugmentedDataset(raw, mergedComponents):
     tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
     # Convert to Numeric specs column
     tubeDf = categoricalToNumeric(tubeDf, 'specs', multiple=True, min_seen_count=30)
+
+    bracketPatterns = getBracketPricePatterns(tubeDf)
+    tubeDf['bracket_price_pattern'] = pd.Series(bracketPatterns)
+    dfToCSV(tubeDf, 'train_set_merged')
 
     # Quote age feature
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
