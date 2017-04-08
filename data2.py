@@ -273,6 +273,12 @@ def yesNotoBinary(df, feature):
             df.set_value(row,feature,0)
     return df
 
+def logTransform(costList):
+    return np.log(costList + 1)
+
+def inverseLogTransform(logCostList):
+    return np.exp(logCostList) - 1
+
 def mergeComponentFeatures(curDf, mergedComponents):
 
     mergedComponents = yesNotoBinary(mergedComponents, 'orientation')
@@ -352,13 +358,24 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     augDf = augDf.drop('tube_assembly_id', axis=1)
     augDf = augDf.drop('quote_date', axis=1)
 
-    dfToCSV(augDf,'train_set_merged')
-
     # Convert categorical to numerical
-    categories = ['']
-    tubeDf = categoricalToNumeric(tubeDf, 'bracket_price_pattern', multiple=False, min_seen_count=30)
-    tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
-    tubeDf = categoricalToNumeric(tubeDf, 'specs', multiple=True, min_seen_count=30)
+    categories = [
+        ('supplier', False),
+        ('material_id', False ),
+        ('end_a', False),
+        ('end_x', False),
+        ('components', True),
+        ('bracket_price_pattern', False),
+        ('component_groups', True),
+        ('component_types', True),
+        ('component_end_form', True),
+        ('component_connection_type', True),
+        ('component_part_names', True),
+    ]
+
+    for colName, multiBool in categories:
+        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=30)
+
     return augDf
 
 
@@ -370,8 +387,9 @@ def getFinalTrainAndTestSet():
     bomDf = raw['bill_of_materials']
     mergedComponents = mergeComponents()
     trainSet = getAugmentedDataset(raw['train_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf)
-    # dfToCSV(trainSet, 'train_set_merged')
-    # testSet = getAugmentedDataset(raw['test_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf)
-    # dfToCSV(testSet, 'test_set_merged')
+    trainSet['log_cost'] = logTransform(trainSet.pop('cost'))
+    dfToCSV(trainSet, 'train_set_merged')
+    testSet = getAugmentedDataset(raw['test_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf)
+    dfToCSV(testSet, 'test_set_merged')
 
 getFinalTrainAndTestSet()
