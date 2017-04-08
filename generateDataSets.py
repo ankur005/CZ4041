@@ -367,12 +367,13 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     augDf = mergeComponentFeatures(augDf, mergedComponents)
 
     # Drop tube_assembly_id and quote_date
-    augDf = augDf.drop('tube_assembly_id', axis=1)
+    # augDf = augDf.drop('tube_assembly_id', axis=1)
     augDf = augDf.drop('quote_date', axis=1)
 
     # Convert categorical to numerical
     categories = [
         ('supplier', False),
+        ('specs', True),
         ('material_id', False ),
         ('end_a', False),
         ('end_x', False),
