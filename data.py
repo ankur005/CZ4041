@@ -147,7 +147,8 @@ def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10):
             else:
                 feats[i, val_to_int['XXX_other']] += 1
     feat_names = ['{} {}'.format(col_name, val) for val in int_to_val]
-    return pd.DataFrame(feats, index=df.index, columns=feat_names)
+    df = df.drop(col_name, axis=1)
+    return pd.concat([df, pd.DataFrame(feats, index=df.index, columns=feat_names)], axis=1)
 
 
 def getSpecsAsList(df):
@@ -162,7 +163,7 @@ def getSpecsAsList(df):
     #     specsList.append([x for x in tempList if not(pd.isnull(x))])
     #     newDf.set_value(i, 'spec', tempList)
     # print specsList
-    specDf['spec'] = specsList
+    specDf['specs'] = specsList
     dfToCSV(specDf,'tube_specs_as_list')
     return specDf
 
@@ -236,6 +237,12 @@ def getAugmentedDataset(raw, mergedComponents):
     tubeDf = oneHotEncoder(tubeDf, 'end_a', True, 'end_a')
     # One hot encode end_x column
     tubeDf = oneHotEncoder(tubeDf, 'end_x', True, 'end_x')
+
+    # Convert to Numeric components column
+    tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
+    # Convert to Numeric specs column
+    tubeDf = categoricalToNumeric(tubeDf, 'specs', multiple=True, min_seen_count=30)
+
     # Quote age feature
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
     # Physical and material volume feature
