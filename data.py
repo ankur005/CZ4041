@@ -94,27 +94,7 @@ def getBracketPricePatterns(df):
         for index in indices:
             bracketing_pattern[index] = bracket
 
-    print bracketing_pattern
     return bracketing_pattern
-
-    # bracketedRecords = [filter(lambda i: df.get_value(i,'bracket_pricing') == "Yes", df) for i in range(0, len(df))]
-    # bracketedRecordsDf = pd.DataFrame.from_records(bracketedRecords)
-    # uniqueTaids = bracketedRecordsDf['tube_assembly_id'].unique()
-    #
-    # bracketPatterns = []
-    #
-    # for taid in uniqueTaids:
-    #     bracketPattern = []
-    #     taidDf = bracketedRecordsDf.query('tube_assembly_id == taid')
-    #     for i in range(0, len(taidDf)):
-    #         bracketPattern.append(taidDf.get_value(i,'quantity'))
-    #
-    #     bracketPattern = tuple(bracketPattern)
-    #
-    # if bracketPattern not in bracketPatterns:
-    #     bracketPatterns.append(bracketPattern)
-    #
-    # print "Bracket Patterns: ", bracketPatterns
 
 
 def mergeComponents():
@@ -324,6 +304,7 @@ def getAugmentedDataset(raw, mergedComponents):
 
     bracketPatterns = getBracketPricePatterns(tubeDf)
     tubeDf['bracket_price_pattern'] = pd.Series(bracketPatterns)
+    tubeDf = categoricalToNumeric(tubeDf, 'bracket_price_pattern', multiple=False, min_seen_count=30)
     dfToCSV(tubeDf, 'train_set_merged')
 
     # Quote age feature
