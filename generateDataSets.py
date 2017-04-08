@@ -134,7 +134,7 @@ def getQuoteAge(df):
     return series.astype('timedelta64[D]')
 
 
-def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10):
+def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10, extractFeatures=True, sourceDf=None):
     counter = None
     val_to_int = None
     int_to_val = None
@@ -145,13 +145,20 @@ def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10):
     int_to_val = ['XXX_other']
     next_index = 1
     counter = Counter()
-    for val in df[col_name]:
+
+    if(extractFeatures):
+        extractable = df
+    else:
+        extractable = sourceDf
+
+    for val in extractable[col_name]:
         if multiple:
             # val is a list of categorical values.
             counter.update(val)
         else:
             # val is a single categorical value.
             counter[val] += 1
+
     for val, count in counter.iteritems():
         if count >= min_seen_count:
             val_to_int[val] = next_index
@@ -172,7 +179,7 @@ def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10):
             else:
                 feats[i, val_to_int['XXX_other']] += 1
     feat_names = ['{} {}'.format(col_name, val) for val in int_to_val]
-    df = df.drop(col_name, axis=1)
+    # df = df.drop(col_name, axis=1)
     return pd.concat([df, pd.DataFrame(feats, index=df.index, columns=feat_names)], axis=1)
 
 
@@ -343,7 +350,7 @@ def getEndsFeatures(df):
     df['end_2x_count'] = df['end_a_2x'].add(df['end_x_2x'])
     return df
 
-def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf):
+def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf, extractFeatures=True, sourceDf=None):
     # Get specs feature with list of values for different specs
     specsDf = getSpecsAsList(specsDf)
     # Get component from bill_of_material as list of values under one feature components
@@ -387,7 +394,7 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     ]
 
     for colName, multiBool in categories:
-        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=30)
+        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=30, extractFeatures=extractFeatures, sourceDf=sourceDf)
 
     return augDf
 
@@ -399,11 +406,25 @@ def getFinalTrainAndTestSet():
     specsDf = raw['specs']
     bomDf = raw['bill_of_materials']
     mergedComponents = mergeComponents()
-    trainSet = getAugmentedDataset(raw['train_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf)
+    trainSet = getAugmentedDataset(raw['train_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf, extractFeatures=True, sourceDf=None)
     trainSet['log_cost'] = logTransform(trainSet.pop('cost'))
+    # dfToCSV(trainSet, 'train_set_merged')
+    testSet = getAugmentedDataset(raw['test_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf, extractFeatures=False, sourceDf=trainSet)
+
+    # Convert categorical to numerical
+    categories = ['supplier', 'specs', 'material_id', 'end_a', 'end_x', 'components', 'bracket_price_pattern', 'component_groups', 'component_types', 'component_end_form', 'component_connection_type', 'component_part_names']
+
+    for category in categories:
+        trainSet = trainSet.drop(category, axis=1)
+        testSet = testSet.drop(category, axis=1)
+
     dfToCSV(trainSet, 'train_set_merged')
-    testSet = getAugmentedDataset(raw['test_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf)
     dfToCSV(testSet, 'test_set_merged')
+
+    print "List of trainset: ", trainSet.columns
+    print "List of testset: ", testSet.columns
+    print "Num of train cols: ", len(trainSet.columns)
+    print "Num of test cols: ", len(testSet.columns)
     return trainSet, testSet
 
-#getFinalTrainAndTestSet()
+# getFinalTrainAndTestSet()
