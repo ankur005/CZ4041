@@ -123,7 +123,27 @@ def mergeComponents():
         mergedCompsDf[key] =  colList
         mergedCompsDf = mergedCompsDf.drop(combineColsDict[key], axis=1)
 
-    dfToCSV(mergedCompsDf, 'merged_components')
+    aggregateCols = [
+        ('component_length', 'component_length', max, 0.0),
+        ('component_thread_pitch', 'component_thread_pitch', min, 9999),
+        ('component_thread_size', 'component_thread_size', min, 9999),
+    ]
+    for new_col, col, aggregator, init in aggregateCols:
+        mergedCompsDf[new_col] = mergedCompsDf[col].map(lambda x: aggregator(init, init, *x))
+
+    colToReplaceNulls = {
+        'component_type_id': 'other',
+        'bolt_pattern_long': 0.0,
+        'bolt_pattern_wide': 0.0,
+        'overall_length': 0.0,
+        'thickness': 0.0,
+        'weight': 0.0,
+    }
+
+    for col, nullVal in colToReplaceNulls.iteritems():
+        mergedCompsDf[col].fillna(nullVal, inplace=True)
+
+    dfToCSV(mergedCompsDf, 'merged_components_intial_boolean_values')
     return mergedCompsDf
 
 
@@ -251,35 +271,84 @@ def componentToFeatures(df):
                     featureDf[colName] = 0
                 featureDf.set_value(i, colName, quantity)
 
-    return pd.concat([df, featureDf], axis=1)
     dfToCSV(pd.concat([df, featureDf], axis=1), 'train_set_after_merged_components')
+    return pd.concat([df, featureDf], axis=1)
 
-def myidentity(init0, init1, *vals):
+
+def getAdjustedQuantiy(df):
+    return df[['min_order_quantity', 'quantity']].max(axis=1)
+
+def getId(vals):
     return list(vals)
 
-def flatten(*lists):
+def getFlattenedList(lists):
     return list(itertools.chain(*lists))
 
-def mysum(*vals):
-    sum(vals)
+def getSum(vals):
+    return sum(vals)
+
+def dropNulls(vals):
+    return filter(lambda x: not pd.isnull(x), vals)
+
+def yesNotoBinary(df, feature):
+    for row in range(0,len(df)):
+        if str(df.get_value(row,feature)) in {'Yes','Y','yes','y','YES'}:
+            df.set_value(row,feature,1)
+        elif str(df.get_value(row,feature)) in {'NO','No','no','N','n','nan','NAN'}:
+            df.set_value(row,feature,0)
+    return df
 
 def mergeTrainAndComponentFeatures(curTraindf, mergedComponents):
+
+    mergedComponents = yesNotoBinary(mergedComponents, 'orientation')
+    mergedComponents = yesNotoBinary(mergedComponents, 'unique_feature')
+    mergedComponents = yesNotoBinary(mergedComponents, 'groove')
+    dfToCSV(mergedComponents, 'merged_components')
     # Add features from the component_info_df.
-    aggregations = [
-        ('unique_feature_count', 'unique_feature', mysum, 0.0)
+    aggregatorCols = [
+        ('component_groups', 'component_group_id', getId),
+        ('unique_feature_count', 'unique_feature', getSum),
+        ('component_types', 'component_type_id', getId),
+        ('orientation_count', 'orientation', getSum),
+        ('groove_count', 'groove', getSum),
+        ('total_component_weight', 'weight', getSum),
+        ('component_end_form', 'component_end_form', getFlattenedList),
+        ('component_connection_type', 'component_connection_type', getFlattenedList),
+        ('component_part_names', 'part_name', dropNulls),
     ]
-    for feat, col, aggregator, init in aggregations:
+
+    for feat, col, aggregator in aggregatorCols:
         cid_to_val = dict(zip(
             mergedComponents.component_id.values,
             mergedComponents[col].values))
-        print cid_to_val
         feat_vals = []
         for cid_list in curTraindf.components:
             vals = [cid_to_val[cid] for cid in cid_list]
-            feat_vals.append(aggregator(*vals))
-        print feat_vals
+            feat_vals.append(aggregator(vals))
         curTraindf[feat] = feat_vals
-        return curTraindf
+
+    aggregateColsNumericType = [
+        ('component_max_length', 'component_length', max, 0.0),
+        ('component_max_overall_length', 'overall_length', max, 0.0),
+        ('component_max_bolt_pattern_wide', 'bolt_pattern_wide', max, 0.0),
+        ('component_max_bolt_pattern_long', 'bolt_pattern_long', max, 0.0),
+        ('component_max_thickness', 'thickness', max, 0.0),
+        ('component_min_thread_pitch', 'component_thread_pitch', min, 9999),
+        ('component_min_thread_size', 'component_thread_size', min, 9999),
+    ]
+
+
+    for feat, col, aggregator, init in aggregateColsNumericType:
+        cid_to_val = dict(zip(
+            mergedComponents.component_id.values,
+            mergedComponents[col].values))
+        feat_vals = []
+        for cid_list in curTraindf.components:
+            vals = [cid_to_val[cid] for cid in cid_list]
+            feat_vals.append(aggregator(init, init, *vals))
+        curTraindf[feat] = feat_vals
+
+    return curTraindf
 
 
 def getAugmentedDataset(raw, mergedComponents):
@@ -287,6 +356,7 @@ def getAugmentedDataset(raw, mergedComponents):
     raw['specs'] = getSpecsAsList(raw['specs'])
     # Get component from bill_of_material as list of values under one feature components
     raw['bill_of_materials'] = getComponentsAsList(raw['bill_of_materials'])
+    # Merge tube features i.e. tube, bom, train/test, spec, endform
     tubeDf = mergeTubeFeatures(raw)
     # One hot encode supplier labels
     tubeDf = oneHotEncoder(tubeDf, 'supplier', True, 'supplier')
@@ -297,22 +367,18 @@ def getAugmentedDataset(raw, mergedComponents):
     # One hot encode end_x column
     tubeDf = oneHotEncoder(tubeDf, 'end_x', True, 'end_x')
 
-    # Convert to Numeric components column
-    tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
-    # Convert to Numeric specs column
-    tubeDf = categoricalToNumeric(tubeDf, 'specs', multiple=True, min_seen_count=30)
+    # Composite features
+    tubeDf['quote_age'] = getQuoteAge(tubeDf)                           # Quote_age
+    tubeDf['adjusted_quantity'] = getAdjustedQuantiy(tubeDf)            # Adjuste quantity
+    tubeDf = getPhysicalMaterialVolume(tubeDf)                          # Physcial and material volume
+    tubeDf['bracket_price_pattern'] = pd.Series(getBracketPricePatterns(tubeDf))
 
-    bracketPatterns = getBracketPricePatterns(tubeDf)
-    tubeDf['bracket_price_pattern'] = pd.Series(bracketPatterns)
-    tubeDf = categoricalToNumeric(tubeDf, 'bracket_price_pattern', multiple=False, min_seen_count=30)
-    dfToCSV(tubeDf, 'train_set_merged')
-
-    # Quote age feature
-    tubeDf['quote_age'] = getQuoteAge(tubeDf)
-    # Physical and material volume feature
-    tubeDf = getPhysicalMaterialVolume(tubeDf)
     # Merge component features with dataset
     tubeDf = mergeTrainAndComponentFeatures(tubeDf, mergedComponents)
+
+    # tubeDf = categoricalToNumeric(tubeDf, 'bracket_price_pattern', multiple=False, min_seen_count=30)
+    # tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
+    # tubeDf = categoricalToNumeric(tubeDf, 'specs', multiple=True, min_seen_count=30)
     dfToCSV(tubeDf, 'train_set_merged')
 
 
