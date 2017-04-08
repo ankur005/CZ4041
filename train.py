@@ -88,5 +88,3 @@ if __name__ == '__main__':
         print "Bag ", i, "Done!"
 
     print "IT'S OVER!"
-
-
