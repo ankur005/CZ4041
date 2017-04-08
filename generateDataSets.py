@@ -391,5 +391,6 @@ def getFinalTrainAndTestSet():
     dfToCSV(trainSet, 'train_set_merged')
     testSet = getAugmentedDataset(raw['test_set'], mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf)
     dfToCSV(testSet, 'test_set_merged')
+    return trainSet, testSet
 
-getFinalTrainAndTestSet()
+# getFinalTrainAndTestSet()
