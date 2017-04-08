@@ -326,6 +326,18 @@ def mergeTrainAndComponentFeatures(curTraindf, mergedComponents):
 
     return curTraindf
 
+# Get 3 features: end_forming_count, end_1x_count, end_2x_count
+# end_forming_count = end_a_forming + end_x_forming
+# end_1x_count = end_a_1x + end_x_1x
+# end_2x_count = end_a_2x + end_x_2x
+def getEndsFeatures(df):
+    print "df types: ", df.dtypes
+    print "end a forming type: ", type(df.get_value(0,'end_a_forming'))
+    print "end x forming type: ", type(df.get_value(0, 'end_x_forming'))
+    df['end_forming_count'] = df.end_a_forming.add(df.end_x_forming)
+    df['end_1x_count'] = df['end_a_1x'].add(df['end_x_1x'])
+    df['end_2x_count'] = df['end_a_2x'].add(df['end_x_2x'])
+    return df
 
 def getAugmentedDataset(raw, mergedComponents):
     # Get specs feature with list of values for different specs
@@ -352,6 +364,9 @@ def getAugmentedDataset(raw, mergedComponents):
     # Merge component features with dataset
     tubeDf = mergeTrainAndComponentFeatures(tubeDf, mergedComponents)
 
+    # Construct new features from end count
+    tubeDf = getEndsFeatures(tubeDf)
+
     # tubeDf = categoricalToNumeric(tubeDf, 'bracket_price_pattern', multiple=False, min_seen_count=30)
     # tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
     # tubeDf = categoricalToNumeric(tubeDf, 'specs', multiple=True, min_seen_count=30)
@@ -362,3 +377,5 @@ def getFinalTrainAndTestSet():
     raw = loadRawData()
     mergedComponents = mergeComponents()
     getAugmentedDataset(raw, mergedComponents)
+
+getFinalTrainAndTestSet()
