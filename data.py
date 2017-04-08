@@ -1,5 +1,7 @@
 from datetime import datetime
 from collections import Counter
+
+import itertools
 import pandas as pd
 import os
 import math
@@ -91,7 +93,23 @@ def mergeComponents():
         compDfList.append(componentDf)
 
     mergedCompsDf = pd.concat(compDfList, axis=0, ignore_index=True)
-    dfToCSV(mergedCompsDf, 'merged_comps')
+    dfToCSV(mergedCompsDf, 'merged_comps_initial')
+
+    combineColsDict = {'component_length' : ['length', 'length_1', 'length_2', 'length_3', 'length_4' ],
+                   'component_end_form' : ['end_form_id_1', 'end_form_id_2', 'end_form_id_3', 'end_form_id_4'],
+                   'component_connection_type' : ['connection_type_id', 'connection_type_id_1', 'connection_type_id_2', 'connection_type_id_3', 'connection_type_id_4'],
+                   'component_nominal_size' : ['nominal_size_1', 'nominal_size_2', 'nominal_size_3', 'nominal_size_4'],
+                   'component_thread_size': ['thread_size', 'thread_size_1', 'thread_size_2', 'thread_size_3', 'thread_size_4'],
+                   'component_thread_pitch' : ['thread_pitch', 'thread_pitch_1', 'thread_pitch_2', 'thread_pitch_3', 'thread_pitch_4']}
+
+    for key in combineColsDict:
+        df = mergedCompsDf[combineColsDict[key]]
+        newDf = df.where(pd.notnull(df), None)
+        colList = [filter(None, row[0:]) for row in newDf.values]
+        mergedCompsDf[key] =  colList
+        mergedCompsDf = mergedCompsDf.drop(combineColsDict[key], axis=1)
+
+    dfToCSV(mergedCompsDf, 'merged_components')
     return mergedCompsDf
 
 
@@ -222,6 +240,33 @@ def componentToFeatures(df):
     return pd.concat([df, featureDf], axis=1)
     dfToCSV(pd.concat([df, featureDf], axis=1), 'train_set_after_merged_components')
 
+def myidentity(init0, init1, *vals):
+    return list(vals)
+
+def flatten(*lists):
+    return list(itertools.chain(*lists))
+
+def mysum(*vals):
+    sum(vals)
+
+def mergeTrainAndComponentFeatures(curTraindf, mergedComponents):
+    # Add features from the component_info_df.
+    aggregations = [
+        ('unique_feature_count', 'unique_feature', mysum, 0.0)
+    ]
+    for feat, col, aggregator, init in aggregations:
+        cid_to_val = dict(zip(
+            mergedComponents.component_id.values,
+            mergedComponents[col].values))
+        print cid_to_val
+        feat_vals = []
+        for cid_list in curTraindf.components:
+            vals = [cid_to_val[cid] for cid in cid_list]
+            feat_vals.append(aggregator(*vals))
+        print feat_vals
+        curTraindf[feat] = feat_vals
+        return curTraindf
+
 
 def getAugmentedDataset(raw, mergedComponents):
     # Get specs feature with list of values for different specs
@@ -247,12 +292,11 @@ def getAugmentedDataset(raw, mergedComponents):
     tubeDf['quote_age'] = getQuoteAge(tubeDf)
     # Physical and material volume feature
     tubeDf = getPhysicalMaterialVolume(tubeDf)
-    # components to features, uncomment later
-    # tubeDf = componentToFeatures(tubeDf)
+    # Merge component features with dataset
+    tubeDf = mergeTrainAndComponentFeatures(tubeDf, mergedComponents)
     dfToCSV(tubeDf, 'train_set_merged')
 
 
 raw = loadRawData()
 mergedComponents = mergeComponents()
 getAugmentedDataset(raw, mergedComponents)
-# getSpecsList(tubeDf)
