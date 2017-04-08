@@ -271,6 +271,8 @@ def yesNotoBinary(df, feature):
             df.set_value(row,feature,1)
         elif str.lower(str(df.get_value(row,feature))) in {'no','n','nan'}:
             df.set_value(row,feature,0)
+
+    pd.to_numeric(df[feature])
     return df
 
 def logTransform(costList):
@@ -331,6 +333,15 @@ def mergeComponentFeatures(curDf, mergedComponents):
 
     return curDf
 
+# Get 3 features: end_forming_count, end_1x_count, end_2x_count
+# end_forming_count = end_a_forming + end_x_forming
+# end_1x_count = end_a_1x + end_x_1x
+# end_2x_count = end_a_2x + end_x_2x
+def getEndsFeatures(df):
+    df['end_forming_count'] = df.end_a_forming.add(df.end_x_forming)
+    df['end_1x_count'] = df['end_a_1x'].add(df['end_x_1x'])
+    df['end_2x_count'] = df['end_a_2x'].add(df['end_x_2x'])
+    return df
 
 def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf):
     # Get specs feature with list of values for different specs
@@ -350,6 +361,7 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     augDf['adjusted_quantity'] = getAdjustedQuantiy(augDf)            # Adjusted quantity
     augDf = getPhysicalMaterialVolume(augDf)                          # Physical and material volume
     augDf['bracket_price_pattern'] = pd.Series(getBracketPricePatterns(augDf))
+    # augDf = getEndsFeatures(augDf)
 
     # Merge component features with dataset
     augDf = mergeComponentFeatures(augDf, mergedComponents)
@@ -393,4 +405,4 @@ def getFinalTrainAndTestSet():
     dfToCSV(testSet, 'test_set_merged')
     return trainSet, testSet
 
-# getFinalTrainAndTestSet()
+#getFinalTrainAndTestSet()

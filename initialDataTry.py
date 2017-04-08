@@ -365,7 +365,7 @@ def getAugmentedDataset(raw, mergedComponents):
     tubeDf = mergeTrainAndComponentFeatures(tubeDf, mergedComponents)
 
     # Construct new features from end count
-    tubeDf = getEndsFeatures(tubeDf)
+    #tubeDf = getEndsFeatures(tubeDf)
 
     # tubeDf = categoricalToNumeric(tubeDf, 'bracket_price_pattern', multiple=False, min_seen_count=30)
     # tubeDf = categoricalToNumeric(tubeDf, 'components', multiple=True, min_seen_count=30)
@@ -377,5 +377,3 @@ def getFinalTrainAndTestSet():
     raw = loadRawData()
     mergedComponents = mergeComponents()
     getAugmentedDataset(raw, mergedComponents)
-
-getFinalTrainAndTestSet()
