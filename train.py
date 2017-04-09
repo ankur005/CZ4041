@@ -69,7 +69,7 @@ def predict(dataset, path):
     xgeval = xgb.DMatrix(dataset)
     predictions = model.predict(xgeval)
     df = pd.DataFrame()
-    df['cost'] = inverseLogTransform(predictions)
+    df['cost'] = predictions
     print df['cost']
     df['id'] = df.index + 1
     return df
@@ -104,15 +104,17 @@ if __name__ == '__main__':
         print "Predicting for Train Data...."
         trainCost = trainBag.pop('log_cost')
         trainPredictions = predict(trainBag, path)
+        trainRMSLE = np.sqrt(mean_squared_error(trainCost.values, trainPredictions['cost'].values))
+        trainPredictions['cost'] = inverseLogTransform(trainPredictions['cost'])        # Inverse log transform the predictions before saving to file
         trainPredFile = open(os.path.join(path, 'train_predictions.csv'), 'w')
-        trainPredictions.to_csv(trainPredFile)
-        trainRMSLE = np.sqrt(mean_squared_error(trainCost.values, logTransform(trainPredictions['cost']).values))
+        trainPredictions.to_csv(trainPredFile, index=False)
         print "RMSLE: ", trainRMSLE
         print "AT: ", datetime.datetime.now(),
         print "Predicting for Test Data...."
         testPredictions = predict(testSet, path)
+        testPredictions['cost'] = inverseLogTransform(testPredictions['cost'])          # Inverse log transform the predictions before saving to file
         testPredFile = open(os.path.join(path, 'test_predictions.csv'), 'w')
-        testPredictions.to_csv(testPredFile)
+        testPredictions.to_csv(testPredFile, index=False)
         print "AT: ", datetime.datetime.now(),
         print "Bag ", i, "Done!"
     print "AT: ", datetime.datetime.now(),

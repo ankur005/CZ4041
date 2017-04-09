@@ -369,7 +369,7 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     augDf = getPhysicalMaterialVolume(augDf)                          # Physical and material volume
     augDf['bracket_price_pattern'] = pd.Series(getBracketPricePatterns(augDf))
     # Nandi's PC ran without using this, with min count = 30
-    augDf = getEndsFeatures(augDf)
+    # augDf = getEndsFeatures(augDf)
 
     # Merge component features with dataset
     augDf = mergeComponentFeatures(augDf, mergedComponents)
@@ -395,7 +395,7 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     ]
 
     for colName, multiBool in categories:
-        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=10, extractFeatures=extractFeatures, sourceDf=sourceDf)
+        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=30, extractFeatures=extractFeatures, sourceDf=sourceDf)
 
     return augDf
 
