@@ -70,7 +70,7 @@ def predict(dataset, path):
     predictions = model.predict(xgeval)
     df = pd.DataFrame()
     df['cost'] = predictions
-    print df['cost']
+    # print df['cost']
     df['id'] = df.index + 1
     return df
 
