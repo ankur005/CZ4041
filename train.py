@@ -19,7 +19,7 @@ xgbParams = {
     'colsample_bytree': 0.6
 }
 
-#  Generate bags for k(10)-fold cross validation
+#  Generate bags - Feature Set 2 - Feature Set 1 for k(10)-fold cross validation
 def generateBags(trainSet):
     # print "Received Train Set Features : ", list(trainSet)
     uniqueTubeAssemblyIds = np.unique(trainSet.tube_assembly_id.values)
@@ -79,18 +79,17 @@ def predict(dataset, path):
 if __name__ == '__main__':
     print "AT: ", datetime.datetime.now(),
     print "Load datasets..."
-    trainSet, testSet = getFinalTrainAndTestSet()
-    # trainSet = pd.read_csv('./OutData/train_set_merged.csv')
-    # testSet = pd.read_csv('./OutData/test_set_merged.csv')
+    # trainSet, testSet = getFinalTrainAndTestSet()
+    trainSet = pd.read_csv('./OutData/train_set_merged.csv')
+    testSet = pd.read_csv('./OutData/test_set_merged.csv')
     testSet = testSet.drop('id', axis=1)
-
     # print "Train Features : ", list(trainSet)
     # print "\n\n......."
     # print "Test Features : ", list(testSet)
     # print trainSet.shape
     # print testSet.shape
-    dir = os.path.dirname(os.path.join(os.getcwd(), "bags"))
-    dirPath = os.path.join(os.getcwd(), "bags")
+    dir = os.path.dirname(os.path.join(os.getcwd(), "bags - Feature Set 4"))
+    dirPath = os.path.join(os.getcwd(), "bags - Feature Set 4")
     if not os.path.exists(dirPath):
         os.makedirs(dirPath)
     for i in range(0, 10):
@@ -108,13 +107,15 @@ if __name__ == '__main__':
         trainPredictions['cost'] = inverseLogTransform(trainPredictions['cost'])        # Inverse log transform the predictions before saving to file
         trainPredFile = open(os.path.join(path, 'train_predictions.csv'), 'w')
         trainPredictions.to_csv(trainPredFile, index=False, columns=['id','cost'])
+        trainPredFile.close()
         print "RMSLE: ", trainRMSLE
         print "AT: ", datetime.datetime.now(),
         print "Predicting for Test Data...."
         testPredictions = predict(testSet, path)
         testPredictions['cost'] = inverseLogTransform(testPredictions['cost'])          # Inverse log transform the predictions before saving to file
-        testPredFile = open(os.path.join(path, 'test_predictions_try.csv'), 'w')
+        testPredFile = open(os.path.join(path, 'test_predictions.csv'), 'w')
         testPredictions.to_csv(testPredFile, index=False, columns=['id','cost'])
+        testPredFile.close()
         print "AT: ", datetime.datetime.now(),
         print "Bag ", i, "Done!"
     print "AT: ", datetime.datetime.now(),

@@ -1,4 +1,7 @@
 .idea/**
 *.pyc
 *.iml
-.bags/**
+.bags - Feature Set 1/**
+.bags - Feature Set 2/**
+.bags - Feature Set 3/**
+.bags - Feature Set 4/**
