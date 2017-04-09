@@ -107,14 +107,14 @@ if __name__ == '__main__':
         trainRMSLE = np.sqrt(mean_squared_error(trainCost.values, trainPredictions['cost'].values))
         trainPredictions['cost'] = inverseLogTransform(trainPredictions['cost'])        # Inverse log transform the predictions before saving to file
         trainPredFile = open(os.path.join(path, 'train_predictions.csv'), 'w')
-        trainPredictions.to_csv(trainPredFile, index=False)
+        trainPredictions.to_csv(trainPredFile, index=False, columns=['id','cost'])
         print "RMSLE: ", trainRMSLE
         print "AT: ", datetime.datetime.now(),
         print "Predicting for Test Data...."
         testPredictions = predict(testSet, path)
         testPredictions['cost'] = inverseLogTransform(testPredictions['cost'])          # Inverse log transform the predictions before saving to file
-        testPredFile = open(os.path.join(path, 'test_predictions.csv'), 'w')
-        testPredictions.to_csv(testPredFile, index=False)
+        testPredFile = open(os.path.join(path, 'test_predictions_try.csv'), 'w')
+        testPredictions.to_csv(testPredFile, index=False, columns=['id','cost'])
         print "AT: ", datetime.datetime.now(),
         print "Bag ", i, "Done!"
     print "AT: ", datetime.datetime.now(),
