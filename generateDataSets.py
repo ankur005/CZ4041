@@ -368,7 +368,8 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     augDf['adjusted_quantity'] = getAdjustedQuantiy(augDf)            # Adjusted quantity
     augDf = getPhysicalMaterialVolume(augDf)                          # Physical and material volume
     augDf['bracket_price_pattern'] = pd.Series(getBracketPricePatterns(augDf))
-    # augDf = getEndsFeatures(augDf)
+    # Nandi's PC ran without using this, with min count = 30
+    augDf = getEndsFeatures(augDf)
 
     # Merge component features with dataset
     augDf = mergeComponentFeatures(augDf, mergedComponents)
@@ -394,7 +395,7 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     ]
 
     for colName, multiBool in categories:
-        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=30, extractFeatures=extractFeatures, sourceDf=sourceDf)
+        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=10, extractFeatures=extractFeatures, sourceDf=sourceDf)
 
     return augDf
 
@@ -420,11 +421,11 @@ def getFinalTrainAndTestSet():
 
     dfToCSV(trainSet, 'train_set_merged')
     dfToCSV(testSet, 'test_set_merged')
-
-    print "List of trainset: ", trainSet.columns
-    print "List of testset: ", testSet.columns
-    print "Num of train cols: ", len(trainSet.columns)
-    print "Num of test cols: ", len(testSet.columns)
+    #
+    # print "List of trainset: ", trainSet.columns
+    # print "List of testset: ", testSet.columns
+    # print "Num of train cols: ", len(trainSet.columns)
+    # print "Num of test cols: ", len(testSet.columns)
     return trainSet, testSet
 
 # getFinalTrainAndTestSet()
