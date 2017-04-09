@@ -1,5 +1,5 @@
 import xgboost as xgb
-import pickle
+import datetime
 import numpy as np
 import os
 import pandas as pd
@@ -77,6 +77,7 @@ def predict(dataset, path):
 
 
 if __name__ == '__main__':
+    print "AT: ", datetime.datetime.now(),
     print "Load datasets..."
     trainSet, testSet = getFinalTrainAndTestSet()
     # trainSet = pd.read_csv('./OutData/train_set_merged.csv')
@@ -90,9 +91,11 @@ if __name__ == '__main__':
     # print testSet.shape
     dir = os.path.dirname(os.path.join(os.getcwd(), "bags"))
     dirPath = os.path.join(os.getcwd(), "bags")
-    os.mkdir(dirPath)
-    for i in range(0,10):
+    if not os.path.exists(dirPath):
+        os.makedirs(dirPath)
+    for i in range(0, 10):
         path = os.path.join(dirPath, str(i))
+        print "AT: ", datetime.datetime.now(),
         print "TRAINING............................."
         print "Selecting bag ", i, "..."
         trainBag = generateBags(trainSet)
@@ -105,10 +108,12 @@ if __name__ == '__main__':
         trainPredictions.to_csv(trainPredFile)
         trainRMSLE = np.sqrt(mean_squared_error(trainCost.values, logTransform(trainPredictions['cost']).values))
         print "RMSLE: ", trainRMSLE
+        print "AT: ", datetime.datetime.now(),
         print "Predicting for Test Data...."
         testPredictions = predict(testSet, path)
         testPredFile = open(os.path.join(path, 'test_predictions.csv'), 'w')
         testPredictions.to_csv(testPredFile)
+        print "AT: ", datetime.datetime.now(),
         print "Bag ", i, "Done!"
-
+    print "AT: ", datetime.datetime.now(),
     print "IT'S OVER!"
