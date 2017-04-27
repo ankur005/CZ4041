@@ -1,13 +1,14 @@
 from datetime import datetime
 from collections import Counter
-
 import itertools
 import pandas as pd
 import os
 import math
 import numpy as np
-from utility import outDir, dataDir
+from constants import outDir, dataDir
 
+
+# Load raw datasets
 def loadRawData():
     # load main files in dataframe
     fileNames = ['train_set', 'test_set', 'tube', 'specs', 'bill_of_materials', 'tube_end_form']
@@ -18,6 +19,7 @@ def loadRawData():
     return rawDfs
 
 
+# Load component datasets
 def loadComponentData():
     componentTypes = pd.read_csv(os.path.join(dataDir,'type_component.csv'))
     componentGroups = ['adaptor','boss','elbow','float','hfl','nut','other','sleeve','straight','tee','threaded']
@@ -26,10 +28,15 @@ def loadComponentData():
     componentGroupsData = {}
     for component in componentGroups:
         componentGroupsData[component] = pd.read_csv(os.path.join(dataDir, 'comp_' + component + '.csv'))
+        if component == 'other':
+            df = componentGroupsData[component]
+            df.loc[len(df)] = ['9999','OTHER',None]
+            componentGroupsData[component] = df
 
     return componentTypes, componentGroupsData
 
 
+# Merge tube, specs, bom and tube ends datasets
 def mergeTubeFeatures(raw, tubeDf, specsDf, bomDf, tubeEndDf):
     df = pd.merge(raw, tubeDf, on='tube_assembly_id')
     df = pd.merge(df, specsDf, on='tube_assembly_id')
@@ -44,6 +51,7 @@ def mergeTubeFeatures(raw, tubeDf, specsDf, bomDf, tubeEndDf):
     return df
 
 
+# Get component features
 def getComponentFeatures(componentGroupsData):
     componentFeatures = []
     for component_df in componentGroupsData.itervalues():
@@ -51,10 +59,10 @@ def getComponentFeatures(componentGroupsData):
             if(col not in componentFeatures):
                 componentFeatures.append(col)
 
-    # print "Component Features: ", componentFeatures
-    # print "Number of component features: ", len(componentFeatures)
     return componentFeatures
 
+
+# Get bracketing pattern for a tuple
 def getBracketPricePatterns(df):
     grouped = df.groupby(
         ['tube_assembly_id', 'supplier', 'quote_date'])
@@ -70,6 +78,7 @@ def getBracketPricePatterns(df):
     return bracketing_pattern
 
 
+# Augment component features into one dataset
 def mergeComponents():
     componentTypes, componentGroupsData = loadComponentData()
     # componentFeatures = getComponentFeatures(componentGroupsData)
@@ -80,7 +89,7 @@ def mergeComponents():
         compDfList.append(componentDf)
 
     mergedCompsDf = pd.concat(compDfList, axis=0, ignore_index=True)
-    dfToCSV(mergedCompsDf, 'merged_comps_initial')
+    # dfToCSV(mergedCompsDf, 'merged_comps_initial')
 
     combineColsDict = {'component_length' : ['length', 'length_1', 'length_2', 'length_3', 'length_4' ],
                    'component_end_form' : ['end_form_id_1', 'end_form_id_2', 'end_form_id_3', 'end_form_id_4'],
@@ -119,21 +128,25 @@ def mergeComponents():
     return mergedCompsDf
 
 
+# Save a dataset as csv file to disk
 def dfToCSV(df, fileName):
     with open(os.path.join(outDir,fileName + '.csv'),'wb') as file:
         df.to_csv(file)
 
 
+# One hot encode a feature
 def oneHotEncoder(df, column, dummy, prefix):
     # print pd.get_dummies(df[column])
     return pd.concat([df, pd.get_dummies(df[column], dummy_na=dummy, prefix=prefix)], axis=1)
 
 
+# Get quote age
 def getQuoteAge(df):
     series = pd.to_datetime(df['quote_date']) - datetime(1900, 1, 1)
     return series.astype('timedelta64[D]')
 
 
+#Convert categorical features to numerical features
 def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10, extractFeatures=True, sourceDf=None):
     counter = None
     val_to_int = None
@@ -183,6 +196,7 @@ def categoricalToNumeric(df, col_name, multiple = False, min_seen_count = 10, ex
     return pd.concat([df, pd.DataFrame(feats, index=df.index, columns=feat_names)], axis=1)
 
 
+# Get specs used for a tube assembly as a list
 def getSpecsAsList(df):
     specDf = pd.DataFrame()
     specDf['tube_assembly_id'] = df['tube_assembly_id']
@@ -200,6 +214,7 @@ def getSpecsAsList(df):
     return specDf
 
 
+# Get component used for a tube assembly as a list
 def getComponentsAsList(df):
     componentsDf = pd.DataFrame()
     componentsDf['tube_assembly_id'] = df['tube_assembly_id']
@@ -220,6 +235,7 @@ def getComponentsAsList(df):
     return componentsDf
 
 
+# Calculate material volume
 def getPhysicalMaterialVolume(df):
     # Can explore effects of inner radius or inner volume
     df['physical_volume'] = 0.0
@@ -233,7 +249,7 @@ def getPhysicalMaterialVolume(df):
         df.set_value(i, 'physical_volume', phyVolume)
         df.set_value(i, 'material_volume', innerVolume)
 
-    dfToCSV(df[['tube_assembly_id','physical_volume','material_volume']],'volume_tubes')
+    # dfToCSV(df[['tube_assembly_id','physical_volume','material_volume']],'volume_tubes')
     return df
 
 
@@ -257,21 +273,32 @@ def componentToFeatures(df):
     return pd.concat([df, featureDf], axis=1)
 
 
+# Correct quantity
 def getAdjustedQuantiy(df):
     return df[['min_order_quantity', 'quantity']].max(axis=1)
 
+
+# Aggregator function
 def getId(vals):
     return list(vals)
 
+
+# Flattens a 2D list to 1D list
 def getFlattenedList(lists):
     return list(itertools.chain(*lists))
 
+
+# Return sum for the passed values
 def getSum(vals):
     return sum(vals)
 
+
+# Drop NAs from the passed list
 def dropNulls(vals):
     return filter(lambda x: not pd.isnull(x), vals)
 
+
+# Convert binary to numerical i.e. Yes to 1 and No/NA to 0
 def yesNotoBinary(df, feature):
     for row in range(0,len(df)):
         if str.lower(str(df.get_value(row,feature))) in {'yes','y'}:
@@ -282,18 +309,24 @@ def yesNotoBinary(df, feature):
     pd.to_numeric(df[feature])
     return df
 
+
+# Log transform the cost i.e. target variable
 def logTransform(costList):
     return np.log(costList + 1)
 
+
+# Inverse log transform the cost i.e. target variable
 def inverseLogTransform(logCostList):
     return np.exp(logCostList) - 1
 
+
+# Merge component features for a given tube assembly id in the dataset
 def mergeComponentFeatures(curDf, mergedComponents):
 
     mergedComponents = yesNotoBinary(mergedComponents, 'orientation')
     mergedComponents = yesNotoBinary(mergedComponents, 'unique_feature')
     mergedComponents = yesNotoBinary(mergedComponents, 'groove')
-    dfToCSV(mergedComponents, 'merged_components')
+    # dfToCSV(mergedComponents, 'merged_components')
     # Add features from the component_info_df.
     aggregatorCols = [
         ('component_groups', 'component_group_id', getId),
@@ -340,6 +373,7 @@ def mergeComponentFeatures(curDf, mergedComponents):
 
     return curDf
 
+
 # Get 3 features: end_forming_count, end_1x_count, end_2x_count
 # end_forming_count = end_a_forming + end_x_forming
 # end_1x_count = end_a_1x + end_x_1x
@@ -350,6 +384,8 @@ def getEndsFeatures(df):
     df['end_2x_count'] = df['end_a_2x'].add(df['end_x_2x'])
     return df
 
+
+# Get the final augmented dataset
 def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf, extractFeatures=True, sourceDf=None):
     # Get specs feature with list of values for different specs
     specsDf = getSpecsAsList(specsDf)
@@ -395,11 +431,12 @@ def getAugmentedDataset(raw, mergedComponents, specsDf, bomDf, tubeEndDf, tubeDf
     ]
 
     for colName, multiBool in categories:
-        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=30, extractFeatures=extractFeatures, sourceDf=sourceDf)
+        augDf = categoricalToNumeric(augDf, colName, multiple=multiBool, min_seen_count=50, extractFeatures=extractFeatures, sourceDf=sourceDf)
 
     return augDf
 
 
+# Get the merged/augmented train and test dataset
 def getFinalTrainAndTestSet():
     raw = loadRawData()
     tubeDf = raw['tube']
@@ -419,13 +456,7 @@ def getFinalTrainAndTestSet():
         trainSet = trainSet.drop(category, axis=1)
         testSet = testSet.drop(category, axis=1)
 
+    # To save the merged dataset as csv files to OutDir
     dfToCSV(trainSet, 'train_set_merged')
     dfToCSV(testSet, 'test_set_merged')
-    #
-    # print "List of trainset: ", trainSet.columns
-    # print "List of testset: ", testSet.columns
-    # print "Num of train cols: ", len(trainSet.columns)
-    # print "Num of test cols: ", len(testSet.columns)
     return trainSet, testSet
-
-# getFinalTrainAndTestSet()
